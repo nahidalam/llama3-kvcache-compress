@@ -94,12 +94,12 @@ def decompress_tensor_gpu(compressed_data, output_shape, algorithm="LZ4"):
     """Decompress tensor directly on the GPU"""
     # Create nvcomp codec
     codec = nvcomp.Codec(algorithm=algorithm)
-    # compress in float16
-    compressed_data = tensor.to(dtype=torch.float16)  # Ensure float16 compression
+    # Convert nvcomp Array to a torch tensor
+    decompressed_tensor = torch.as_tensor(compressed_data.ptr, device="cuda")  # Ensure it's on GPU
 
-    # Decompress the data
-    decompressed_data = codec.decode([compressed_data])[0]
-    
+    # Ensure it has the correct dtype
+    decompressed_tensor = decompressed_tensor.to(dtype=torch.float16)
+
     # Convert back to torch tensor with the right shape and dtype
     # Ensure we're using float16 for model parameters
     return torch.as_tensor(decompressed_data, device="cuda", dtype=torch.float16).view(output_shape)
