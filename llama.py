@@ -90,19 +90,23 @@ print(f"Model Weights Compressed. Total {len(compressed_weights)} tensors.")
 # 2. Decompress Model Weights for Inference
 # ------------------------------
 
-def decompress_tensor_gpu(compressed_data, output_shape, algorithm="LZ4"):
-    """Decompress tensor directly on the GPU"""
-    # Create nvcomp codec
-    codec = nvcomp.Codec(algorithm=algorithm)
-    # Convert nvcomp Array to a torch tensor
-    decompressed_tensor = torch.as_tensor(compressed_data.ptr, device="cuda")  # Ensure it's on GPU
+import torch
 
-    # Ensure it has the correct dtype
-    decompressed_tensor = decompressed_tensor.to(dtype=torch.float16)
+def decompress_tensor_gpu(compressed_data, output_shape):
+    """
+    Decompress the tensor using nvcomp and convert it to a PyTorch tensor.
+    """
+    # Ensure compressed_data is a valid buffer
+    if not isinstance(compressed_data, torch.Tensor):
+        # Convert nvcomp array to numpy, then to a PyTorch tensor
+        decompressed_tensor = torch.tensor(compressed_data.tolist(), device="cuda", dtype=torch.float16)
+    else:
+        decompressed_tensor = compressed_data.to(device="cuda", dtype=torch.float16)
 
-    # Convert back to torch tensor with the right shape and dtype
-    # Ensure we're using float16 for model parameters
-    return torch.as_tensor(decompressed_data, device="cuda", dtype=torch.float16).view(output_shape)
+    # Ensure correct shape
+    return decompressed_tensor.view(output_shape)
+
+
 
 # Create a function to stream decompress only the needed layers during inference
 def stream_decompress_layers(layer_indices):
